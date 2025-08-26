@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Switro Settings</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    :root{--accent:#3E44B7;--bg:#f6f7fb}
+    body{font-family:Inter,system-ui,Arial;background:var(--bg);padding:28px;margin:0}
+    .card{max-width:760px;margin:0 auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(18,24,40,0.06)}
+    h1{margin:0 0 8px}
+    label{display:block;margin-top:12px;font-weight:600}
+    input{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;margin-top:6px}
+    .row{display:flex;gap:12px;margin-top:14px;align-items:center}
+    button{background:var(--accent);color:#fff;padding:10px 14px;border-radius:8px;border:0;cursor:pointer}
+    .note{font-size:13px;color:#6b7280;margin-top:8px}
+    .status{padding:10px;border-radius:8px;background:#ecfdf5;color:#064e3b;margin-top:12px;display:none}
+    .error{padding:10px;border-radius:8px;background:#fff5f5;color:#7f1d1d;margin-top:12px;display:none}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Crypto Payments by Switro — Settings</h1>
+    <p class="note">Add your Switro API Key so this store can create hosted checkouts. If you do not set a key, checkout attempts will fail with an explanatory error.</p>
+    <label for="apiKey">Switro API Key</label>
+    <input id="apiKey" type="text" placeholder="sk_live_..." />
+    <div class="row">
+      <button id="save">Save</button>
+      <div id="status" class="status">Saved ✓</div>
+      <div id="err" class="error">Error</div>
+    </div>
+    <div class="note">Make sure to use the key for the correct network (devnet/mainnet).</div>
+  </div>
+<script>
+(async function(){
+  const params = new URLSearchParams(location.search);
+  const shop = params.get('shop');
+  const apiInput = document.getElementById('apiKey');
+  const status = document.getElementById('status');
+  const err = document.getElementById('err');
+  const saveBtn = document.getElementById('save');
+  if (!shop) {
+    apiInput.placeholder = 'Missing shop param. Use ?shop=your-shop.myshopify.com';
+    saveBtn.disabled = true;
+    return;
+  }
+  // load existing
+  try {
+    const r = await fetch('/api/settings?shop=' + encodeURIComponent(shop));
+    const j = await r.json();
+    if (j.apiKey) apiInput.value = j.apiKey;
+  } catch(e) {
+    console.warn(e);
+  }
+  saveBtn.addEventListener('click', async () => {
+    err.style.display='none';
+    try {
+      const payload = { apiKey: apiInput.value };
+      const r = await fetch('/api/settings?shop=' + encodeURIComponent(shop), {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if (j.ok) {
+        status.style.display='block';
+        setTimeout(()=> status.style.display='none', 2000);
+      } else {
+        err.textContent = j.error || 'Save failed';
+        err.style.display='block';
+      }
+    } catch(e) {
+      err.textContent = 'Network error';
+      err.style.display='block';
+    }
+  });
+})();
+</script>
+</body>
+</html>
